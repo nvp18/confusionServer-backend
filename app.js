@@ -11,6 +11,8 @@ var dishRouter = require('./routes/dishRouter');
 var promoRouter = require('./routes/promoRouter');
 var leaderRouter = require('./routes/leaderRouter');
 const mongoose = require('mongoose');
+var passport = require('passport');
+var authenticate = require('./authenticate')
 const Dishes = require('./models/dishes');
 const url = 'mongodb://localhost:27017/conFusion';
 const connect = mongoose.connect(url);
@@ -34,52 +36,24 @@ app.use(session({
   resave:false,
   store:new FileStore()
 }));
+app.use(passport.initialize());
+app.use(passport.session());
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
 //app.use(cookieParser('12345-67890-09876-54321'));
 function auth(req,res,next){
-  if(!req.session.user){
-    var authHeader = req.headers.authorization;
-    if(!authHeader){
-      var err = new Error("you are not authenticated");
-      res.setHeader("WWW-Authenticate","Basic");
-      err.status = 401;
-      next(err);
-      return;
+  if(!req.user){
+    var err = new Error("you are not authenticated");
+    err.status = 403;
+    next(err);
     }
-    var auth = new Buffer.from(authHeader.split(' ')[1],'base64').toString().split(':');
-    console.log('auth=',auth)
-    var user = auth[0];
-    var password = auth[1];
-    if(user === 'admin' && password ==='password'){
-      req.session.user = 'admin';
-      next();
-    }
-    else{
-      console.log(user);
-      console.log(password);
-      var err = new Error("you are not authenticated");
-      res.setHeader("WWW-Authenticate","Basic");
-      err.status = 401;
-      next(err);
-      return;
-    }
-  }
   else{
-    if(req.session.user === 'admin'){
-      next();
-    }
-    else{
-      var err = new Error("you are not authenticated");
-      res.setHeader("WWW-Authenticate","Basic");
-      err.status = 401;
-      next(err);
-    }
+    next();
   }
 }
 app.use(auth);
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
 app.use('/dishes',dishRouter);
 app.use('/promo',promoRouter);
 app.use('/leader',leaderRouter);
